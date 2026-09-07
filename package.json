@@ -9,15 +9,19 @@
     "dev:backend": "pnpm --filter pool-management-backend run dev",
     "dev:frontend": "pnpm --filter pool-management-frontend run dev",
     "build:frontend": "pnpm --filter pool-management-frontend run build",
-    "db:up": "docker compose -f database/docker-compose.yml up -d",
-    "db:down": "docker compose -f database/docker-compose.yml down",
     "db:migrate": "pnpm --filter pool-management-backend run db:migrate",
     "db:generate": "pnpm --filter pool-management-backend run db:generate",
-    "db:studio": "pnpm --filter pool-management-backend run db:studio"
+    "db:studio": "pnpm --filter pool-management-backend run db:studio",
+    "lint": "pnpm --filter \"*\" run lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
   },
-
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.0",
+    "prettier": "^3.9.6"
   },
   "keywords": [
     "pool-management",

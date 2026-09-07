@@ -10,10 +10,12 @@ const apiRoutes = require('./routes/api');
 const app = express();
 
 // Global Middlewares
-app.use(cors({
-  origin: config.clientUrl,
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: config.clientUrl,
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(requestLogger);

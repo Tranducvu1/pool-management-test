@@ -1,10 +1,9 @@
-const { sendError } = require('../utils/apiResponse');
 const config = require('../config');
 
 /**
  * Middleware bắt lỗi tập trung (Global Error Handler)
  */
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, _next) => {
   console.error(`[Error] ${req.method} ${req.originalUrl}:`, err);
 
   const statusCode = err.statusCode || err.status || 500;
