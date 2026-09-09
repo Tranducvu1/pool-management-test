@@ -84,7 +84,7 @@ Tại thư mục gốc:
 # Cài đặt tất cả dependencies cho toàn bộ monorepo
 pnpm install
 
-# Chạy song song cả Backend (port 5000) và Frontend (port 5173)
+# Chạy song song cả Backend (port 5050) và Frontend (port 5173)
 pnpm run dev
 ```
 

@@ -31,4 +31,8 @@ Thumbs.db
 # Database files
 *.sqlite
 *.sqlite-journal
+*.db
+*.db-journal
+prisma/dev.db
 postgres-data/
+uploads/

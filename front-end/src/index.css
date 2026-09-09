@@ -5,8 +5,6 @@
 }
 
 body {
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  line-height: 1.5;
-  padding: 24px;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  min-height: 100vh;
 }

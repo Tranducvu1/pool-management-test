@@ -1,7 +1,5 @@
-// Prisma schema file
-
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -9,13 +7,43 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Model cơ bản mẫu
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("ADMIN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@map("users")
+}
+
+model Student {
+  id                 Int          @id @default(autoincrement())
+  name               String
+  phone              String
+  dob                DateTime
+  currentSwimStyle   String
+  totalSessions      Int
+  remainingSessions  Int
+  faceEmbeddingJson  String?
+  photoUrl           String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  attendances        Attendance[]
+
+  @@map("students")
+}
+
+model Attendance {
+  id          Int            @id @default(autoincrement())
+  studentId   Int
+  student     Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  checkInTime DateTime       @default(now())
+  method      String         @default("MANUAL")
+  photoUrl    String?
+  note        String?
+
+  @@map("attendance")
 }

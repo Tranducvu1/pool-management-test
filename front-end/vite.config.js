@@ -14,11 +14,18 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  optimizeDeps: {
+    include: ['@vladmandic/face-api'],
+  },
   server: {
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: 'http://localhost:5050',
+        changeOrigin: true,
+      },
+      '/uploads': {
+        target: 'http://localhost:5050',
         changeOrigin: true,
       },
     },

@@ -6,6 +6,7 @@ const requestLogger = require('./middlewares/requestLogger');
 const notFoundHandler = require('./middlewares/notFoundHandler');
 const errorHandler = require('./middlewares/errorHandler');
 const apiRoutes = require('./routes/api');
+const { UPLOAD_ROOT } = require('./utils/savePhoto');
 
 const app = express();
 
@@ -16,8 +17,8 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '8mb' }));
+app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 app.use(requestLogger);
 
 // Root route
@@ -31,6 +32,7 @@ app.get('/', (req, res) => {
 });
 
 // API Routes
+app.use('/uploads', express.static(UPLOAD_ROOT));
 app.use('/api', apiRoutes);
 
 // 404 Handler
