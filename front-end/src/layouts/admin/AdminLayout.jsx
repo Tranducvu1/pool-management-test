@@ -103,7 +103,15 @@ export default function AdminLayout() {
             </Button>
           ))}
         </Box>
-        <Box sx={{ p: { xs: 2, md: 3.5 }, maxWidth: 1200, mx: 'auto' }}>
+        <Box
+          sx={{
+            p: { xs: 2, md: 3.5 },
+            maxWidth: 1600,
+            mx: 'auto',
+            width: '100%',
+            boxSizing: 'border-box',
+          }}
+        >
           <Outlet />
         </Box>
       </Box>

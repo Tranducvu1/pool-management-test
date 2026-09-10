@@ -1,5 +1,7 @@
+const fs = require('fs');
+const path = require('path');
 const prisma = require('../config/db');
-const { saveDataUrl } = require('../utils/savePhoto');
+const { saveDataUrl, UPLOAD_ROOT } = require('../utils/savePhoto');
 
 const listStudents = () =>
   prisma.student.findMany({
@@ -107,4 +109,33 @@ const enrollFace = async (id, { photoUrl, faceDescriptor }) => {
   });
 };
 
-module.exports = { listStudents, getDashboard, createStudent, enrollFace };
+const deleteStudent = async (id) => {
+  const studentId = Number(id);
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+  });
+
+  if (!student) {
+    const error = new Error('Học sinh không tồn tại');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (student.photoUrl && student.photoUrl.startsWith('/uploads/')) {
+    try {
+      const relativePath = student.photoUrl.replace(/^\/uploads\//, '');
+      const fullPath = path.join(UPLOAD_ROOT, relativePath);
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+      }
+    } catch {
+      // bỏ qua lỗi file nếu có
+    }
+  }
+
+  return prisma.student.delete({
+    where: { id: studentId },
+  });
+};
+
+module.exports = { listStudents, getDashboard, createStudent, enrollFace, deleteStudent };

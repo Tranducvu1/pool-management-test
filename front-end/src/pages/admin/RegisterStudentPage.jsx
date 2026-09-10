@@ -159,7 +159,15 @@ export default function RegisterStudentPage() {
                 sx={{ width: '100%', borderRadius: 3, display: 'block', mb: 2 }}
               />
             ) : (
-              <Box sx={{ overflow: 'hidden', borderRadius: 3, bgcolor: '#0b3b52', mb: 2 }}>
+              <Box
+                sx={{
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderRadius: 3,
+                  bgcolor: '#0b3b52',
+                  mb: 2,
+                }}
+              >
                 <Webcam
                   ref={webcamRef}
                   screenshotFormat="image/jpeg"
@@ -167,6 +175,38 @@ export default function RegisterStudentPage() {
                   videoConstraints={{ facingMode: 'user' }}
                   style={{ width: '100%', display: 'block' }}
                 />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: 220,
+                    height: 280,
+                    borderRadius: '50%',
+                    border: '2px dashed rgba(56, 189, 248, 0.75)',
+                    pointerEvents: 'none',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'center',
+                    pt: 1,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      bgcolor: 'rgba(0,0,0,0.6)',
+                      color: '#38bdf8',
+                      px: 1,
+                      py: 0.2,
+                      borderRadius: 1,
+                      fontSize: 11,
+                      fontWeight: 700,
+                    }}
+                  >
+                    Đặt mặt vào giữa khung
+                  </Typography>
+                </Box>
               </Box>
             )}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>

@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const { saveDataUrl } = require('../utils/savePhoto');
 
 const euclideanDistance = (a, b) => {
   if (!a || !b || a.length !== b.length) return Number.POSITIVE_INFINITY;
@@ -69,11 +70,13 @@ const checkin = async ({ faceDescriptor, photoUrl }) => {
     throw error;
   }
 
+  const savedPhotoPath = saveDataUrl(photoUrl, 'attendance');
+
   const [attendance, updated] = await prisma.$transaction([
     prisma.attendance.create({
       data: {
         studentId: student.id,
-        photoUrl: photoUrl || null,
+        photoUrl: savedPhotoPath,
         method: 'FACE',
         note: `Điểm danh khuôn mặt (khoảng cách ${match.distance.toFixed(3)})`,
       },

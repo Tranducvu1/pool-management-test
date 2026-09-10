@@ -4,6 +4,7 @@ const {
   getDashboard,
   createStudent,
   enrollFace,
+  deleteStudent,
 } = require('../services/studentService');
 const { sendSuccess } = require('../utils/apiResponse');
 
@@ -66,9 +67,19 @@ const enrollFaceController = async (req, res, next) => {
   }
 };
 
+const deleteStudentController = async (req, res, next) => {
+  try {
+    const student = await deleteStudent(req.params.id);
+    return sendSuccess(res, student, `Đã xóa học sinh ${student.name} thành công`);
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getStudents,
   getDashboardController,
   createStudentController,
   enrollFaceController,
+  deleteStudentController,
 };
