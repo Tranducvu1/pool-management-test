@@ -1,15 +1,58 @@
 const fs = require('fs');
 const path = require('path');
 const prisma = require('../config/db');
+const { FACE_API } = require('../constants/faceApi');
 const { saveDataUrl, UPLOAD_ROOT } = require('../utils/savePhoto');
 
 const listStudents = () =>
-  prisma.student.findMany({
-    orderBy: { name: 'asc' },
-    include: {
-      _count: { select: { attendances: true } },
+  prisma.student
+    .findMany({
+      orderBy: { name: 'asc' },
+      include: {
+        _count: { select: { attendances: true } },
+      },
+    })
+    .then((rows) =>
+      rows.map(({ faceEmbeddingJson, ...student }) => ({
+        ...student,
+        hasFaceEmbedding: Boolean(faceEmbeddingJson),
+      }))
+    );
+
+const parseDescriptor = (raw) => {
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const values = Array.isArray(parsed) ? parsed : Object.values(parsed);
+    return values.length === FACE_API.DESCRIPTOR_LENGTH ? values.map(Number) : null;
+  } catch {
+    return null;
+  }
+};
+
+const listFaceGallery = async () => {
+  const rows = await prisma.student.findMany({
+    where: { faceEmbeddingJson: { not: null } },
+    select: {
+      id: true,
+      name: true,
+      remainingSessions: true,
+      faceEmbeddingJson: true,
     },
   });
+
+  return rows
+    .map((row) => {
+      const descriptor = parseDescriptor(row.faceEmbeddingJson);
+      if (!descriptor) return null;
+      return {
+        id: row.id,
+        name: row.name,
+        remainingSessions: row.remainingSessions,
+        descriptor,
+      };
+    })
+    .filter(Boolean);
+};
 
 const getDashboard = async () => {
   const [studentCount, todayCount, recent, students] = await Promise.all([
@@ -138,4 +181,11 @@ const deleteStudent = async (id) => {
   });
 };
 
-module.exports = { listStudents, getDashboard, createStudent, enrollFace, deleteStudent };
+module.exports = {
+  listStudents,
+  listFaceGallery,
+  getDashboard,
+  createStudent,
+  enrollFace,
+  deleteStudent,
+};

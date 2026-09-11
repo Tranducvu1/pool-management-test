@@ -5,6 +5,7 @@ const { getHealthStatus } = require('../controllers/healthController');
 const { loginController } = require('../controllers/authController');
 const {
   getStudents,
+  getFaceGallery,
   getDashboardController,
   createStudentController,
   enrollFaceController,
@@ -17,6 +18,7 @@ router.get('/health', getHealthStatus);
 router.post('/auth/login', loginController);
 
 router.get('/students', requireAuth, getStudents);
+router.get('/students/gallery', requireAuth, getFaceGallery);
 router.post('/students', requireAuth, createStudentController);
 router.patch('/students/:id/face', requireAuth, enrollFaceController);
 router.delete('/students/:id', requireAuth, deleteStudentController);

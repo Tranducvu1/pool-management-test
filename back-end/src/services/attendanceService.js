@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const { FACE_API } = require('../constants/faceApi');
 const { saveDataUrl } = require('../utils/savePhoto');
 
 const euclideanDistance = (a, b) => {
@@ -22,7 +23,7 @@ const matchStudentByDescriptor = async (descriptor) => {
   students.forEach((student) => {
     const parsed = JSON.parse(student.faceEmbeddingJson);
     const stored = Array.isArray(parsed) ? parsed : Object.values(parsed);
-    if (stored.length !== descriptor.length) return;
+    if (stored.length !== FACE_API.DESCRIPTOR_LENGTH) return;
     const distance = euclideanDistance(descriptor, stored.map(Number));
     if (distance < bestDistance) {
       bestDistance = distance;
@@ -30,7 +31,7 @@ const matchStudentByDescriptor = async (descriptor) => {
     }
   });
 
-  if (!best || bestDistance > 0.65) {
+  if (!best || bestDistance > FACE_API.THRESHOLD) {
     const error = new Error(
       best
         ? `Không khớp khuôn mặt đã đăng ký. Gần nhất: ${best.name} (${bestDistance.toFixed(2)}).`

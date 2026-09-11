@@ -21,9 +21,16 @@ import {
 } from '@mui/material';
 import { ShieldCheck, ShieldAlert, CheckCircle2, UserCheck, Camera } from 'lucide-react';
 import { format } from 'date-fns';
-import { useCheckin, useEnrollFace, useStudents, useTodayAttendance } from '@/services/queries';
+import {
+  useCheckin,
+  useEnrollFace,
+  useFaceGallery,
+  useStudents,
+  useTodayAttendance,
+} from '@/services/queries';
 import {
   analyzeLiveness,
+  buildGallery,
   detectOverlay,
   FACE_THRESHOLD,
   getDescriptorFromDataUrl,
@@ -56,6 +63,7 @@ export default function AttendancePage() {
   const [viewAttendancePhoto, setViewAttendancePhoto] = useState(null);
 
   const { data: students = [] } = useStudents();
+  const { data: galleryRows = [] } = useFaceGallery();
   const { data: today = [] } = useTodayAttendance();
   const checkin = useCheckin();
   const enrollFace = useEnrollFace();
@@ -65,6 +73,7 @@ export default function AttendancePage() {
   const backfilled = useRef(new Set());
   const autoCheckinRef = useRef(false);
   const checkedRecentlyRef = useRef(new Map());
+  const galleryRef = useRef([]);
   const livenessTrackerRef = useRef({
     studentId: null,
     smileCount: 0,
@@ -75,6 +84,11 @@ export default function AttendancePage() {
   });
 
   const todayStudentIds = useMemo(() => new Set(today.map((item) => item.studentId)), [today]);
+  const gallery = useMemo(() => buildGallery(galleryRows), [galleryRows]);
+
+  useEffect(() => {
+    galleryRef.current = gallery;
+  }, [gallery]);
 
   useEffect(() => {
     loadFaceModels()
@@ -87,7 +101,7 @@ export default function AttendancePage() {
     let cancelled = false;
     const backfill = async () => {
       const missing = students.filter(
-        (s) => s.photoUrl && !s.faceEmbeddingJson && !backfilled.current.has(s.id)
+        (s) => s.photoUrl && !s.hasFaceEmbedding && !backfilled.current.has(s.id)
       );
       for (const student of missing) {
         backfilled.current.add(student.id);
@@ -196,7 +210,7 @@ export default function AttendancePage() {
               });
             } else {
               // 2. KHUÔN MẶT ĐÃ CĂN CHUẨN XÁC VÀO GIỮA KHUNG OVAL
-              const result = matchDescriptor(descriptor, students);
+              const result = matchDescriptor(descriptor, galleryRef.current);
               if (result.matched) {
                 const matchedStudent = result.student;
 

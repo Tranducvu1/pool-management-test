@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: pool-management-demo
+    runtime: node
+    plan: free
+    rootDir: .
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter pool-management-backend db:generate && pnpm --filter pool-management-frontend build
+    startCommand: pnpm --filter pool-management-backend db:deploy && pnpm --filter pool-management-backend db:bootstrap && pnpm --filter pool-management-backend start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: STORE_UPLOADS_IN_DB
+        value: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pool-management-db
+          property: connectionString
+
+databases:
+  - name: pool-management-db
+    plan: free

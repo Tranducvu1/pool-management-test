@@ -8,9 +8,11 @@
     "start": "node server.js",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
+    "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:push": "prisma db push",
     "db:seed": "node prisma/seed.js",
+    "db:bootstrap": "node prisma/bootstrap.js",
     "lint": "eslint ."
   },
   "prisma": {

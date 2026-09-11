@@ -86,7 +86,7 @@ export default function StudentsPage() {
       headerAlign: 'center',
       sortable: false,
       renderCell: (params) =>
-        params.row.faceEmbeddingJson ? (
+        params.row.hasFaceEmbedding ? (
           <Chip size="small" color="success" label="Đã gắn" />
         ) : (
           <Button size="small" component={Link} to={`/students/register?id=${params.row.id}`}>

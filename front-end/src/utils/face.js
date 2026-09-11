@@ -1,36 +1,58 @@
 import * as faceapi from '@vladmandic/face-api';
+import { FACE_API, FACE_THRESHOLD } from '@/constants/faceApi';
 
-export const FACE_THRESHOLD = 0.65;
-const MODEL_URL = '/models';
+export { FACE_THRESHOLD };
 
 let loading = null;
 
 const detectorOptions = () =>
-  new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 });
+  new faceapi.TinyFaceDetectorOptions({
+    inputSize: FACE_API.DETECTOR_INPUT_SIZE,
+    scoreThreshold: 0.4,
+  });
+
+const withTimeout = (promise, ms) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      window.setTimeout(() => reject(new Error('Detection timeout')), ms);
+    }),
+  ]);
 
 export const loadFaceModels = async () => {
   if (!loading) {
     loading = (async () => {
       if (faceapi.tf?.setBackend) {
-        await faceapi.tf.setBackend('webgl');
+        await faceapi.tf.setBackend(FACE_API.TF_BACKEND);
         await faceapi.tf.ready();
       }
       await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        faceapi.nets.tinyFaceDetector.loadFromUri(FACE_API.MODEL_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(FACE_API.MODEL_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(FACE_API.MODEL_URL),
       ]);
     })();
   }
   return loading;
 };
 
+export const validateDescriptor = (desc) => {
+  const values = Array.isArray(desc) ? desc : Array.from(desc || []);
+  if (values.length !== FACE_API.DESCRIPTOR_LENGTH) {
+    throw new Error(`Descriptor length ${values.length}, expected ${FACE_API.DESCRIPTOR_LENGTH}`);
+  }
+  if (!values.every((value) => typeof value === 'number' && Number.isFinite(value))) {
+    throw new Error('Descriptor chứa giá trị không hợp lệ');
+  }
+  return values;
+};
+
 const descriptorFrom = async (input, validateBoundary = true) => {
   await loadFaceModels();
-  const detection = await faceapi
-    .detectSingleFace(input, detectorOptions())
-    .withFaceLandmarks()
-    .withFaceDescriptor();
+  const detection = await withTimeout(
+    faceapi.detectSingleFace(input, detectorOptions()).withFaceLandmarks().withFaceDescriptor(),
+    FACE_API.DETECTION_TIMEOUT_MS
+  );
   if (!detection) {
     throw new Error('Không thấy khuôn mặt. Chụp thẳng, đủ sáng, một người trong khung hình.');
   }
@@ -48,7 +70,7 @@ const descriptorFrom = async (input, validateBoundary = true) => {
     }
   }
 
-  return Array.from(detection.descriptor);
+  return validateDescriptor(detection.descriptor);
 };
 
 export const getDescriptorFromDataUrl = async (dataUrl) => {
@@ -58,7 +80,7 @@ export const getDescriptorFromDataUrl = async (dataUrl) => {
 
 export const averageDescriptors = (descriptors) => {
   const valid = descriptors.filter(
-    (descriptor) => Array.isArray(descriptor) && descriptor.length === 128
+    (descriptor) => Array.isArray(descriptor) && descriptor.length === FACE_API.DESCRIPTOR_LENGTH
   );
   if (!valid.length) return null;
 
@@ -360,10 +382,10 @@ export const detectOverlay = async (video, canvas, options = {}) => {
   if (!displaySize.width || !displaySize.height) return null;
   faceapi.matchDimensions(canvas, displaySize);
 
-  const detection = await faceapi
-    .detectSingleFace(video, detectorOptions())
-    .withFaceLandmarks()
-    .withFaceDescriptor();
+  const detection = await withTimeout(
+    faceapi.detectSingleFace(video, detectorOptions()).withFaceLandmarks().withFaceDescriptor(),
+    FACE_API.DETECTION_TIMEOUT_MS
+  );
 
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -396,7 +418,7 @@ export const detectOverlay = async (video, canvas, options = {}) => {
   const smile = calculateSmileScore(landmarks);
 
   return {
-    descriptor: Array.from(detection.descriptor),
+    descriptor: validateDescriptor(detection.descriptor),
     landmarks,
     detection: resized.detection,
     ear,
@@ -408,9 +430,12 @@ export const detectOverlay = async (video, canvas, options = {}) => {
 
 export const parseEmbedding = (raw) => {
   if (!raw) return null;
+  if (Array.isArray(raw) && raw.length === FACE_API.DESCRIPTOR_LENGTH) {
+    return raw.map(Number);
+  }
   const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
   const values = Array.isArray(parsed) ? parsed : Object.values(parsed);
-  return values.length === 128 ? values.map(Number) : null;
+  return values.length === FACE_API.DESCRIPTOR_LENGTH ? values.map(Number) : null;
 };
 
 export const distanceOf = (a, b) => {
@@ -427,12 +452,12 @@ export const matchDescriptor = (descriptor, students) => {
   let best = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   students.forEach((student) => {
-    const stored = parseEmbedding(student.faceEmbeddingJson);
-    if (!stored) return;
-    const distance = distanceOf(descriptor, stored);
+    const embedding = student.embedding || parseEmbedding(student.descriptor || student.faceEmbeddingJson);
+    if (!embedding) return;
+    const distance = distanceOf(descriptor, embedding);
     if (distance < bestDistance) {
       bestDistance = distance;
-      best = student;
+      best = student.student || student;
     }
   });
   if (!best) return { student: null, distance: null, matched: false };
@@ -442,3 +467,11 @@ export const matchDescriptor = (descriptor, students) => {
     matched: bestDistance <= FACE_THRESHOLD,
   };
 };
+
+export const buildGallery = (students) =>
+  students
+    .map((student) => ({
+      student,
+      embedding: parseEmbedding(student.descriptor || student.faceEmbeddingJson),
+    }))
+    .filter((item) => item.embedding);

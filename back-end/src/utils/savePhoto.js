@@ -8,6 +8,10 @@ const saveDataUrl = (dataUrl, folder = 'students') => {
     return null;
   }
 
+  if (process.env.STORE_UPLOADS_IN_DB === 'true' && dataUrl.startsWith('data:image/')) {
+    return dataUrl;
+  }
+
   const match = dataUrl.match(/^data:(image\/[\w+.-]+);base64,(.+)$/);
   if (!match) {
     if (dataUrl.startsWith('/uploads/')) {

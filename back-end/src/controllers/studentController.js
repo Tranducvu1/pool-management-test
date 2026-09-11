@@ -1,6 +1,8 @@
 const { z } = require('zod');
+const { FACE_API } = require('../constants/faceApi');
 const {
   listStudents,
+  listFaceGallery,
   getDashboard,
   createStudent,
   enrollFace,
@@ -15,13 +17,24 @@ const createStudentSchema = z.object({
   currentSwimStyle: z.string().optional(),
   totalSessions: z.coerce.number().int().min(1, 'Số buổi phải lớn hơn 0'),
   photoUrl: z.string().min(20, 'Cần ảnh đăng ký (chụp hoặc tải lên)'),
-  faceDescriptor: z.array(z.number()).length(128, 'Không nhận diện được khuôn mặt trong ảnh'),
+  faceDescriptor: z
+    .array(z.number())
+    .length(FACE_API.DESCRIPTOR_LENGTH, 'Không nhận diện được khuôn mặt trong ảnh'),
 });
 
 const getStudents = async (_req, res, next) => {
   try {
     const students = await listStudents();
     return sendSuccess(res, students, 'Danh sách học sinh');
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getFaceGallery = async (_req, res, next) => {
+  try {
+    const students = await listFaceGallery();
+    return sendSuccess(res, students, 'Gallery khuôn mặt');
   } catch (error) {
     return next(error);
   }
@@ -54,7 +67,7 @@ const enrollFaceController = async (req, res, next) => {
     const payload = z
       .object({
         photoUrl: z.string().min(8).optional(),
-        faceDescriptor: z.array(z.number()).length(128),
+        faceDescriptor: z.array(z.number()).length(FACE_API.DESCRIPTOR_LENGTH),
       })
       .parse(req.body);
     const student = await enrollFace(req.params.id, payload);
@@ -78,6 +91,7 @@ const deleteStudentController = async (req, res, next) => {
 
 module.exports = {
   getStudents,
+  getFaceGallery,
   getDashboardController,
   createStudentController,
   enrollFaceController,

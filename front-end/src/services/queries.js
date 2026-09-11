@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { FACE_API, QUERY_KEYS } from '@/constants/faceApi';
 import api from './api';
 
 export const loginRequest = async (payload) => {
@@ -8,16 +9,26 @@ export const loginRequest = async (payload) => {
 
 export const useStudents = () =>
   useQuery({
-    queryKey: ['students'],
+    queryKey: QUERY_KEYS.students,
     queryFn: async () => {
       const { data } = await api.get('/students');
       return data.data;
     },
   });
 
+export const useFaceGallery = () =>
+  useQuery({
+    queryKey: QUERY_KEYS.faceGallery,
+    queryFn: async () => {
+      const { data } = await api.get('/students/gallery');
+      return data.data;
+    },
+    staleTime: FACE_API.GALLERY_STALE_MS,
+  });
+
 export const useDashboard = () =>
   useQuery({
-    queryKey: ['dashboard'],
+    queryKey: QUERY_KEYS.dashboard,
     queryFn: async () => {
       const { data } = await api.get('/dashboard');
       return data.data;
@@ -26,12 +37,18 @@ export const useDashboard = () =>
 
 export const useTodayAttendance = () =>
   useQuery({
-    queryKey: ['attendance-today'],
+    queryKey: QUERY_KEYS.attendanceToday,
     queryFn: async () => {
       const { data } = await api.get('/attendance/today');
       return data.data;
     },
   });
+
+const invalidateEnrollQueries = (queryClient) => {
+  queryClient.invalidateQueries({ queryKey: QUERY_KEYS.students });
+  queryClient.invalidateQueries({ queryKey: QUERY_KEYS.faceGallery });
+  queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
+};
 
 export const useCreateStudent = () => {
   const queryClient = useQueryClient();
@@ -40,10 +57,7 @@ export const useCreateStudent = () => {
       const { data } = await api.post('/students', payload);
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-    },
+    onSuccess: () => invalidateEnrollQueries(queryClient),
   });
 };
 
@@ -54,9 +68,7 @@ export const useEnrollFace = () => {
       const { data } = await api.patch(`/students/${id}/face`, { photoUrl, faceDescriptor });
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-    },
+    onSuccess: () => invalidateEnrollQueries(queryClient),
   });
 };
 
@@ -68,9 +80,9 @@ export const useCheckin = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      queryClient.invalidateQueries({ queryKey: ['attendance-today'] });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.students });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.attendanceToday });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboard });
     },
   });
 };
