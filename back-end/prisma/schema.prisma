@@ -1,5 +1,5 @@
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -41,9 +41,12 @@ model Attendance {
   studentId   Int
   student     Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
   checkInTime DateTime       @default(now())
+  checkInDate String?
+  studyShift  String         @default("MORNING")
   method      String         @default("MANUAL")
   photoUrl    String?
   note        String?
 
+  @@unique([studentId, checkInDate, studyShift])
   @@map("attendance")
 }

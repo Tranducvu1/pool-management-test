@@ -4,6 +4,13 @@ const prisma = require('../config/db');
 const { FACE_API } = require('../constants/faceApi');
 const { saveDataUrl, UPLOAD_ROOT } = require('../utils/savePhoto');
 
+const toDateKey = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const listStudents = () =>
   prisma.student
     .findMany({
@@ -55,12 +62,11 @@ const listFaceGallery = async () => {
 };
 
 const getDashboard = async () => {
+  const todayKey = toDateKey(new Date());
   const [studentCount, todayCount, recent, students] = await Promise.all([
     prisma.student.count(),
     prisma.attendance.count({
-      where: {
-        checkInTime: { gte: startOfDay(new Date()) },
-      },
+      where: { checkInDate: todayKey },
     }),
     prisma.attendance.findMany({
       orderBy: { checkInTime: 'desc' },
@@ -94,7 +100,7 @@ const attendanceByDay = async (days) => {
 
   const rows = await prisma.attendance.findMany({
     where: { checkInTime: { gte: from } },
-    select: { checkInTime: true },
+    select: { checkInTime: true, checkInDate: true },
   });
 
   const map = new Map();
@@ -106,7 +112,7 @@ const attendanceByDay = async (days) => {
   }
 
   rows.forEach((row) => {
-    const key = row.checkInTime.toISOString().slice(0, 10);
+    const key = row.checkInDate || toDateKey(row.checkInTime);
     if (map.has(key)) {
       map.set(key, map.get(key) + 1);
     }

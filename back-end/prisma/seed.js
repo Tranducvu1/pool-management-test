@@ -3,6 +3,15 @@ const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
+const toDateKey = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getShift = (date) => (date.getHours() < 12 ? 'MORNING' : 'AFTERNOON');
+
 const students = [
   {
     name: 'Nguyễn Minh An',
@@ -110,10 +119,13 @@ async function main() {
   ];
 
   for (const item of sampleCheckins) {
+    const checkInTime = new Date(now - item.hoursAgo * 60 * 60 * 1000);
     await prisma.attendance.create({
       data: {
         studentId: created[item.studentIndex].id,
-        checkInTime: new Date(now - item.hoursAgo * 60 * 60 * 1000),
+        checkInTime,
+        checkInDate: toDateKey(checkInTime),
+        studyShift: getShift(checkInTime),
         method: item.studentIndex % 2 === 0 ? 'FACE' : 'MANUAL',
         note: 'Dữ liệu mẫu',
       },

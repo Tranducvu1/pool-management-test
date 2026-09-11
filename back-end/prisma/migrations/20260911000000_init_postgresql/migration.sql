@@ -28,6 +28,8 @@ CREATE TABLE "attendance" (
   "id" SERIAL NOT NULL,
   "studentId" INTEGER NOT NULL,
   "checkInTime" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "checkInDate" TEXT,
+  "studyShift" TEXT NOT NULL DEFAULT 'MORNING',
   "method" TEXT NOT NULL DEFAULT 'MANUAL',
   "photoUrl" TEXT,
   "note" TEXT,
@@ -36,8 +38,8 @@ CREATE TABLE "attendance" (
 
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
-CREATE UNIQUE INDEX "attendance_studentId_checkInDate_key"
-ON "attendance"("studentId", (DATE("checkInTime")));
+CREATE UNIQUE INDEX "attendance_studentId_checkInDate_studyShift_key"
+ON "attendance"("studentId", "checkInDate", "studyShift");
 
 ALTER TABLE "attendance"
 ADD CONSTRAINT "attendance_studentId_fkey"

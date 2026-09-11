@@ -1,6 +1,23 @@
 const prisma = require('../config/db');
-const { FACE_API } = require('../constants/faceApi');
+const {
+  ATTENDANCE_SHIFT,
+  ATTENDANCE_SHIFT_LABEL,
+  ATTENDANCE_SHIFT_SPLIT_HOUR,
+  FACE_API,
+} = require('../constants/faceApi');
 const { saveDataUrl } = require('../utils/savePhoto');
+
+const toDateKey = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getAttendanceShift = (date = new Date()) =>
+  date.getHours() < ATTENDANCE_SHIFT_SPLIT_HOUR
+    ? ATTENDANCE_SHIFT.MORNING
+    : ATTENDANCE_SHIFT.AFTERNOON;
 
 const euclideanDistance = (a, b) => {
   if (!a || !b || a.length !== b.length) return Number.POSITIVE_INFINITY;
@@ -48,6 +65,10 @@ const checkin = async ({ faceDescriptor, photoUrl }) => {
   const match = await matchStudentByDescriptor(faceDescriptor);
 
   const student = match.student;
+  const checkInTime = new Date();
+  const checkInDate = toDateKey(checkInTime);
+  const studyShift = getAttendanceShift(checkInTime);
+  const shiftLabel = ATTENDANCE_SHIFT_LABEL[studyShift];
 
   if (student.remainingSessions <= 0) {
     const error = new Error(`${student.name} đã hết buổi học`);
@@ -55,18 +76,16 @@ const checkin = async ({ faceDescriptor, photoUrl }) => {
     throw error;
   }
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-
-  const alreadyToday = await prisma.attendance.findFirst({
+  const alreadyCheckedShift = await prisma.attendance.findFirst({
     where: {
       studentId: student.id,
-      checkInTime: { gte: todayStart },
+      checkInDate,
+      studyShift,
     },
   });
 
-  if (alreadyToday) {
-    const error = new Error(`${student.name} đã điểm danh hôm nay`);
+  if (alreadyCheckedShift) {
+    const error = new Error(`${student.name} đã điểm danh ${shiftLabel} hôm nay`);
     error.statusCode = 409;
     throw error;
   }
@@ -77,9 +96,12 @@ const checkin = async ({ faceDescriptor, photoUrl }) => {
     prisma.attendance.create({
       data: {
         studentId: student.id,
+        checkInTime,
+        checkInDate,
+        studyShift,
         photoUrl: savedPhotoPath,
         method: 'FACE',
-        note: `Điểm danh khuôn mặt (khoảng cách ${match.distance.toFixed(3)})`,
+        note: `Điểm danh khuôn mặt ${shiftLabel} (khoảng cách ${match.distance.toFixed(3)})`,
       },
       include: { student: true },
     }),
@@ -96,14 +118,13 @@ const checkin = async ({ faceDescriptor, photoUrl }) => {
 };
 
 const listToday = () => {
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const checkInDate = toDateKey(new Date());
 
   return prisma.attendance.findMany({
-    where: { checkInTime: { gte: todayStart } },
+    where: { checkInDate },
     orderBy: { checkInTime: 'desc' },
     include: { student: true },
   });
 };
 
-module.exports = { checkin, listToday };
+module.exports = { checkin, listToday, getAttendanceShift, toDateKey };

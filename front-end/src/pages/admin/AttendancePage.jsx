@@ -28,6 +28,7 @@ import {
   useStudents,
   useTodayAttendance,
 } from '@/services/queries';
+import { ATTENDANCE_SHIFT_LABEL, FACE_API, getCurrentAttendanceShift } from '@/constants/faceApi';
 import {
   analyzeLiveness,
   buildGallery,
@@ -39,7 +40,6 @@ import {
   playFeedbackSound,
 } from '@/utils/face';
 
-const AUTO_CHECKIN_COOLDOWN_MS = 15000;
 const REQUIRED_SMILE_FRAMES = 2;
 
 const SMILE_CHALLENGE = {
@@ -74,6 +74,7 @@ export default function AttendancePage() {
   const autoCheckinRef = useRef(false);
   const checkedRecentlyRef = useRef(new Map());
   const galleryRef = useRef([]);
+  const todayShiftKeysRef = useRef(new Set());
   const livenessTrackerRef = useRef({
     studentId: null,
     smileCount: 0,
@@ -83,12 +84,19 @@ export default function AttendancePage() {
     spoofAlertPlayed: false,
   });
 
-  const todayStudentIds = useMemo(() => new Set(today.map((item) => item.studentId)), [today]);
+  const todayShiftKeys = useMemo(
+    () => new Set(today.map((item) => `${item.studentId}:${item.studyShift || 'MORNING'}`)),
+    [today]
+  );
   const gallery = useMemo(() => buildGallery(galleryRows), [galleryRows]);
 
   useEffect(() => {
     galleryRef.current = gallery;
   }, [gallery]);
+
+  useEffect(() => {
+    todayShiftKeysRef.current = todayShiftKeys;
+  }, [todayShiftKeys]);
 
   useEffect(() => {
     loadFaceModels()
@@ -130,10 +138,12 @@ export default function AttendancePage() {
 
     const autoCheckin = async (student, faceDescriptor) => {
       const lastChecked = checkedRecentlyRef.current.get(student.id) || 0;
+      const currentShift = getCurrentAttendanceShift();
+      const shiftKey = `${student.id}:${currentShift}`;
       if (
         autoCheckinRef.current ||
-        todayStudentIds.has(student.id) ||
-        Date.now() - lastChecked < AUTO_CHECKIN_COOLDOWN_MS
+        todayShiftKeysRef.current.has(shiftKey) ||
+        Date.now() - lastChecked < FACE_API.CHECKIN_COOLDOWN_MS
       ) {
         return;
       }
@@ -213,9 +223,13 @@ export default function AttendancePage() {
               const result = matchDescriptor(descriptor, galleryRef.current);
               if (result.matched) {
                 const matchedStudent = result.student;
+                const currentShift = getCurrentAttendanceShift();
+                const shiftKey = `${matchedStudent.id}:${currentShift}`;
 
-                if (todayStudentIds.has(matchedStudent.id)) {
-                  setHint(`${matchedStudent.name} đã điểm danh hôm nay`);
+                if (todayShiftKeysRef.current.has(shiftKey)) {
+                  setHint(
+                    `${matchedStudent.name} đã điểm danh ${ATTENDANCE_SHIFT_LABEL[currentShift]} hôm nay`
+                  );
                   tracker.studentId = null;
                   tracker.smileCount = 0;
                   tracker.stableCenteredCount = 0;
@@ -371,7 +385,7 @@ export default function AttendancePage() {
     return () => {
       active = false;
     };
-  }, [checkinAsync, livenessEnabled, modelReady, students, todayStudentIds]);
+  }, [checkinAsync, livenessEnabled, modelReady, students]);
 
   const onCheckin = async () => {
     if (liveStats.faceValidation && !liveStats.faceValidation.valid) {
@@ -575,11 +589,7 @@ export default function AttendancePage() {
                   <Chip
                     size="small"
                     icon={<Camera size={14} color="#ffffff" />}
-                    label={
-                      livenessTrackerRef.current.smileCount >= REQUIRED_SMILE_FRAMES
-                        ? '📸 Đang chụp ảnh...'
-                        : `📸 Giữ nụ cười tươi (${livenessTrackerRef.current.smileCount || 1}/${REQUIRED_SMILE_FRAMES})...`
-                    }
+                    label="📸 Giữ nụ cười tươi..."
                     sx={{
                       bgcolor: '#16a34a',
                       color: 'white',

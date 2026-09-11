@@ -19,7 +19,8 @@ const checkinController = async (req, res, next) => {
     }
     const payload = checkinSchema.parse(req.body);
     const data = await checkin(payload);
-    return sendSuccess(res, data, `Điểm danh thành công: ${data.student.name}`);
+    const shiftLabel = data.studyShift === 'MORNING' ? 'ca sáng' : 'ca chiều';
+    return sendSuccess(res, data, `Điểm danh ${shiftLabel} thành công: ${data.student.name}`);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ success: false, message: error.errors[0].message });

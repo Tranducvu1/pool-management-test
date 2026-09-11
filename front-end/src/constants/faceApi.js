@@ -20,3 +20,20 @@ export const QUERY_KEYS = {
 };
 
 export const FACE_THRESHOLD = FACE_API.THRESHOLD;
+
+export const ATTENDANCE_SHIFT = {
+  MORNING: 'MORNING',
+  AFTERNOON: 'AFTERNOON',
+};
+
+export const ATTENDANCE_SHIFT_LABEL = {
+  [ATTENDANCE_SHIFT.MORNING]: 'ca sáng',
+  [ATTENDANCE_SHIFT.AFTERNOON]: 'ca chiều',
+};
+
+export const ATTENDANCE_SHIFT_SPLIT_HOUR = 12;
+
+export const getCurrentAttendanceShift = (date = new Date()) =>
+  date.getHours() < ATTENDANCE_SHIFT_SPLIT_HOUR
+    ? ATTENDANCE_SHIFT.MORNING
+    : ATTENDANCE_SHIFT.AFTERNOON;

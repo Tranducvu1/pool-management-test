@@ -19,4 +19,22 @@ const QUERY_KEYS = {
   dashboard: ['dashboard'],
 };
 
-module.exports = { FACE_API, QUERY_KEYS };
+const ATTENDANCE_SHIFT = {
+  MORNING: 'MORNING',
+  AFTERNOON: 'AFTERNOON',
+};
+
+const ATTENDANCE_SHIFT_LABEL = {
+  [ATTENDANCE_SHIFT.MORNING]: 'ca sáng',
+  [ATTENDANCE_SHIFT.AFTERNOON]: 'ca chiều',
+};
+
+const ATTENDANCE_SHIFT_SPLIT_HOUR = 12;
+
+module.exports = {
+  FACE_API,
+  QUERY_KEYS,
+  ATTENDANCE_SHIFT,
+  ATTENDANCE_SHIFT_LABEL,
+  ATTENDANCE_SHIFT_SPLIT_HOUR,
+};
