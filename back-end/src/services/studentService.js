@@ -1,0 +1,197 @@
+const fs = require('fs');
+const path = require('path');
+const prisma = require('../config/db');
+const { FACE_API } = require('../constants/faceApi');
+const { saveDataUrl, UPLOAD_ROOT } = require('../utils/savePhoto');
+
+const toDateKey = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const listStudents = () =>
+  prisma.student
+    .findMany({
+      orderBy: { name: 'asc' },
+      include: {
+        _count: { select: { attendances: true } },
+      },
+    })
+    .then((rows) =>
+      rows.map(({ faceEmbeddingJson, ...student }) => ({
+        ...student,
+        hasFaceEmbedding: Boolean(faceEmbeddingJson),
+      }))
+    );
+
+const parseDescriptor = (raw) => {
+  try {
+    const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const values = Array.isArray(parsed) ? parsed : Object.values(parsed);
+    return values.length === FACE_API.DESCRIPTOR_LENGTH ? values.map(Number) : null;
+  } catch {
+    return null;
+  }
+};
+
+const listFaceGallery = async () => {
+  const rows = await prisma.student.findMany({
+    where: { faceEmbeddingJson: { not: null } },
+    select: {
+      id: true,
+      name: true,
+      remainingSessions: true,
+      faceEmbeddingJson: true,
+    },
+  });
+
+  return rows
+    .map((row) => {
+      const descriptor = parseDescriptor(row.faceEmbeddingJson);
+      if (!descriptor) return null;
+      return {
+        id: row.id,
+        name: row.name,
+        remainingSessions: row.remainingSessions,
+        descriptor,
+      };
+    })
+    .filter(Boolean);
+};
+
+const getDashboard = async () => {
+  const todayKey = toDateKey(new Date());
+  const [studentCount, todayCount, recent, students] = await Promise.all([
+    prisma.student.count(),
+    prisma.attendance.count({
+      where: { checkInDate: todayKey },
+    }),
+    prisma.attendance.findMany({
+      orderBy: { checkInTime: 'desc' },
+      take: 8,
+      include: { student: true },
+    }),
+    prisma.student.findMany({ select: { remainingSessions: true, totalSessions: true } }),
+  ]);
+
+  const lowSessions = students.filter((s) => s.remainingSessions <= 5).length;
+  const byDay = await attendanceByDay(7);
+
+  return {
+    studentCount,
+    todayCount,
+    lowSessions,
+    recent,
+    byDay,
+  };
+};
+
+const startOfDay = (date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const attendanceByDay = async (days) => {
+  const from = startOfDay(new Date());
+  from.setDate(from.getDate() - (days - 1));
+
+  const rows = await prisma.attendance.findMany({
+    where: { checkInTime: { gte: from } },
+    select: { checkInTime: true, checkInDate: true },
+  });
+
+  const map = new Map();
+  for (let i = 0; i < days; i += 1) {
+    const d = new Date(from);
+    d.setDate(from.getDate() + i);
+    const key = d.toISOString().slice(0, 10);
+    map.set(key, 0);
+  }
+
+  rows.forEach((row) => {
+    const key = row.checkInDate || toDateKey(row.checkInTime);
+    if (map.has(key)) {
+      map.set(key, map.get(key) + 1);
+    }
+  });
+
+  return Array.from(map.entries()).map(([date, count]) => ({ date, count }));
+};
+
+const createStudent = async ({
+  name,
+  phone,
+  dob,
+  currentSwimStyle,
+  totalSessions,
+  photoUrl,
+  faceDescriptor,
+}) => {
+  const sessions = Number(totalSessions) || 0;
+  const photoPath = saveDataUrl(photoUrl, 'students');
+
+  return prisma.student.create({
+    data: {
+      name: name.trim(),
+      phone: phone.trim(),
+      dob: new Date(dob),
+      currentSwimStyle: currentSwimStyle.trim() || 'Freestyle',
+      totalSessions: sessions,
+      remainingSessions: sessions,
+      photoUrl: photoPath,
+      faceEmbeddingJson: Array.isArray(faceDescriptor) ? JSON.stringify(faceDescriptor) : null,
+    },
+  });
+};
+
+const enrollFace = async (id, { photoUrl, faceDescriptor }) => {
+  const photoPath = saveDataUrl(photoUrl, 'students');
+  return prisma.student.update({
+    where: { id: Number(id) },
+    data: {
+      ...(photoPath ? { photoUrl: photoPath } : {}),
+      faceEmbeddingJson: JSON.stringify(faceDescriptor),
+    },
+  });
+};
+
+const deleteStudent = async (id) => {
+  const studentId = Number(id);
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+  });
+
+  if (!student) {
+    const error = new Error('Học sinh không tồn tại');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (student.photoUrl && student.photoUrl.startsWith('/uploads/')) {
+    try {
+      const relativePath = student.photoUrl.replace(/^\/uploads\//, '');
+      const fullPath = path.join(UPLOAD_ROOT, relativePath);
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+      }
+    } catch {
+      // bỏ qua lỗi file nếu có
+    }
+  }
+
+  return prisma.student.delete({
+    where: { id: studentId },
+  });
+};
+
+module.exports = {
+  listStudents,
+  listFaceGallery,
+  getDashboard,
+  createStudent,
+  enrollFace,
+  deleteStudent,
+};
